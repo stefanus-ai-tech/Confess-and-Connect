@@ -1,4 +1,4 @@
-// src/components/ChatWindow.js
+// client/src/components/ChatWindow.js
 import React, { useState, useEffect, useRef } from "react";
 import {
   Container,
@@ -22,6 +22,13 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
   const [input, setInput] = useState("");
   const [burn, setBurn] = useState(false);
   const [error, setError] = useState("");
+
+  // New state variables for "I'm Listening" button
+  const [canSendListening, setCanSendListening] = useState(false);
+  const [cooldown, setCooldown] = useState(0);
+  const cooldownDuration = 10; // Cooldown duration in seconds
+  const cooldownRef = useRef(null);
+
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -31,6 +38,11 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
         ...prev,
         { from: data.from, message: data.message },
       ]);
+
+      // Enable the "I'm Listening" button when a new message is received from Confessor
+      if (role === "listener") {
+        setCanSendListening(true);
+      }
     });
 
     // Listen for burn confession
@@ -48,13 +60,27 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
       setError("Connection failed. Please try again.");
     });
 
+    // Listen for error messages from the server
+    socket.on("error_message", (msg) => {
+      setError(msg);
+    });
+
+    // Listen for message sent acknowledgments
+    socket.on("message_sent", (msg) => {
+      // Optionally handle acknowledgments
+      console.log("Message sent:", msg);
+    });
+
     // Cleanup on unmount
     return () => {
       socket.off("receive_message");
       socket.off("burn_confession");
       socket.off("connect_error");
+      socket.off("error_message");
+      socket.off("message_sent");
+      if (cooldownRef.current) clearInterval(cooldownRef.current);
     };
-  }, [socket, onBurnConfession]);
+  }, [socket, role, onBurnConfession]);
 
   useEffect(() => {
     // Scroll to the bottom when messages update
@@ -75,10 +101,24 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
   const sendListening = () => {
     const messageData = {
       message: "I'm listening",
-      mode: "normal",
+      mode: "listening", // Updated mode
     };
     socket.emit("send_message", messageData);
     setMessages((prev) => [...prev, { from: "you", message: "I'm listening" }]);
+
+    // Disable the button and start cooldown
+    setCanSendListening(false);
+    setCooldown(cooldownDuration);
+
+    cooldownRef.current = setInterval(() => {
+      setCooldown((prev) => {
+        if (prev <= 1) {
+          clearInterval(cooldownRef.current);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
   };
 
   const sendBurnConfession = () => {
@@ -172,24 +212,35 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
           </IconButton>
         </Box>
       ) : (
-        <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
+        <Box
+          sx={{
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            mt: 2,
+          }}
+        >
           <Button
             variant="contained"
             color="error"
             startIcon={<LocalFireDepartmentIcon />}
             onClick={sendListening}
+            disabled={!canSendListening || cooldown > 0}
             sx={{
               textTransform: "none",
               fontSize: "16px",
               padding: "10px 20px",
-              backgroundColor: "#d32f2f",
-              transition: "background-color 0.3s ease",
+              backgroundColor:
+                canSendListening && cooldown === 0 ? "#d32f2f" : "#555",
+              transition: "background-color 0.3s ease, opacity 0.3s ease",
               "&:hover": {
-                backgroundColor: "#ff6659",
+                backgroundColor:
+                  canSendListening && cooldown === 0 ? "#ff6659" : "#555",
               },
+              opacity: canSendListening ? 1 : 0.6,
             }}
           >
-            I'm Listening
+            {cooldown > 0 ? `I'm Listening (${cooldown})` : "I'm Listening"}
           </Button>
         </Box>
       )}

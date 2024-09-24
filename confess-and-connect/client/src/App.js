@@ -1,4 +1,5 @@
 // src/App.js
+// client/src/App.js
 import React, { useState } from "react";
 import io from "socket.io-client";
 import RoleSelection from "./components/RoleSelection";
@@ -6,8 +7,8 @@ import ChatWindow from "./components/ChatWindow";
 import { createTheme, ThemeProvider } from "@mui/material/styles";
 import { CssBaseline } from "@mui/material";
 
-// Connect to the backend server (update with your server URL if different)
-const socket = io("http://localhost:5000"); // Replace with your backend URL
+// Connect to the backend server (same origin)
+const socket = io(); // Automatically connects to the current host
 
 // Define a custom theme with black and red palette
 const theme = createTheme({
