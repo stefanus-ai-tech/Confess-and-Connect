@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
+    
   },
   "dependencies": {
     "@babel/plugin-proposal-private-property-in-object": "^7.0.0",
