@@ -17,13 +17,13 @@ import {
 import SendIcon from "@mui/icons-material/Send";
 import LocalFireDepartmentIcon from "@mui/icons-material/LocalFireDepartment"; // Correct Icon Import
 
-const ChatWindow = ({ socket, role, onBurnConfession }) => {
+const ChatWindow = ({ socket, role, roomId, onBurnConfession }) => {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [burn, setBurn] = useState(false);
   const [error, setError] = useState("");
 
-  // New state variables for "I'm Listening" button
+  // State variables for "I'm Listening" button
   const [canSendListening, setCanSendListening] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const cooldownDuration = 10; // Cooldown duration in seconds
@@ -40,13 +40,23 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
       ]);
 
       // Enable the "I'm Listening" button when a new message is received from Confessor
-      if (role === "listener") {
+      if (role === "listener" && data.from === "Confessor") {
         setCanSendListening(true);
       }
     });
 
     // Listen for burn confession
     socket.on("burn_confession", () => {
+      setBurn(true);
+      setTimeout(() => {
+        setBurn(false);
+        setMessages([]);
+        if (onBurnConfession) onBurnConfession();
+      }, 3000); // Duration of burn.gif
+    });
+
+    // Listen for confession burned notification
+    socket.on("confession_burned", () => {
       setBurn(true);
       setTimeout(() => {
         setBurn(false);
@@ -71,13 +81,21 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
       console.log("Message sent:", msg);
     });
 
+    // Listen for participant disconnection
+    socket.on("participant_disconnected", () => {
+      // Optionally handle disconnections
+      alert("Your chat partner has disconnected.");
+    });
+
     // Cleanup on unmount
     return () => {
       socket.off("receive_message");
       socket.off("burn_confession");
+      socket.off("confession_burned");
       socket.off("connect_error");
       socket.off("error_message");
       socket.off("message_sent");
+      socket.off("participant_disconnected");
       if (cooldownRef.current) clearInterval(cooldownRef.current);
     };
   }, [socket, role, onBurnConfession]);
@@ -169,10 +187,20 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
                   mr: 2,
                 }}
               >
-                {msg.from === "you" ? "Y" : "L"}
+                {msg.from === "you"
+                  ? "Y"
+                  : msg.from === "Confessor"
+                  ? "C"
+                  : "L"}
               </Avatar>
               <ListItemText
-                primary={msg.from === "you" ? "You" : "Listener"}
+                primary={
+                  msg.from === "you"
+                    ? "You"
+                    : msg.from === "Confessor"
+                    ? "Confessor"
+                    : "Listener"
+                }
                 secondary={msg.message}
                 sx={{
                   textAlign: msg.from === "you" ? "right" : "left",
@@ -189,7 +217,7 @@ const ChatWindow = ({ socket, role, onBurnConfession }) => {
         <Box sx={{ display: "flex", mt: 2 }}>
           <TextField
             variant="outlined"
-            placeholder="Type your message..."
+            placeholder="Type your confession..."
             fullWidth
             value={input}
             onChange={(e) => setInput(e.target.value)}
