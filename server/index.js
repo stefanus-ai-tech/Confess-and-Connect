@@ -81,12 +81,10 @@ io.on("connection", (socket) => {
       }
     } else if (mode === "listening") {
       // Listener sends "I'm listening" message
-      socket
-        .to(roomId)
-        .emit("receive_message", {
-          from: "Listener",
-          message: "I'm listening",
-        });
+      socket.to(roomId).emit("receive_message", {
+        from: "Listener",
+        message: "I'm listening",
+      });
     } else if (mode === "normal") {
       // Confessor sends a regular message
       socket.to(roomId).emit("receive_message", { from: "Confessor", message });
@@ -141,5 +139,5 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "client", "build", "index.html"));
 });
 
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
