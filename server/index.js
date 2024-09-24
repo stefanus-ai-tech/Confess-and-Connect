@@ -92,12 +92,10 @@ io.on("connection", (socket) => {
         break;
       case "listening":
         // Listener sends "I'm listening" message
-        socket
-          .to(roomId)
-          .emit("receive_message", {
-            from: "Listener",
-            message: "I'm listening",
-          });
+        socket.to(roomId).emit("receive_message", {
+          from: "Listener",
+          message: "I'm listening",
+        });
         break;
       case "normal":
         // Confessor sends a regular message
@@ -143,5 +141,5 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "..", "client", "build", "index.html"));
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000; // Adjust the port if necessary
 server.listen(PORT, () => console.log(`Server running on port ${PORT}`));
